@@ -28,6 +28,17 @@
       box-sizing: border-box;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+    .compact-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compact-controls .btn-sm {
+  width: 100%;
+  justify-content: center;
+}
 
     body {
       background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -543,6 +554,9 @@
               <button class="btn btn-outline btn-sm" id="uploadLogoBtn">
                 <i class="fas fa-upload"></i> Upload Logo
               </button>
+              <button class="btn btn-danger btn-sm" id="removeLogoBtn" style="display: none;">
+                <i class="fas fa-trash"></i> Remove Logo
+              </button>
               <p class="small-text">Recommended: 300x100px (PNG/JPG)</p>
             </div>
           </div>
@@ -787,27 +801,45 @@ Email: john@client.com"></textarea>
       document.getElementById('previewDate').textContent = formatDate(today);
       
       // Logo handling
-      const logoInput = document.getElementById('logoInput');
-      const logoPreview = document.getElementById('logoPreview');
-      const uploadLogoBtn = document.getElementById('uploadLogoBtn');
-      const previewLogo = document.getElementById('previewLogo');
-      const noLogo = document.getElementById('noLogo');
-      
-      uploadLogoBtn.addEventListener('click', () => logoInput.click());
-      
-      logoInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            logoPreview.innerHTML = `<img src="${e.target.result}" alt="Logo">`;
-            previewLogo.src = e.target.result;
-            previewLogo.style.display = 'block';
-            noLogo.style.display = 'none';
-          };
-          reader.readAsDataURL(file);
-        }
-      });
+const logoInput = document.getElementById('logoInput');
+const logoPreview = document.getElementById('logoPreview');
+const uploadLogoBtn = document.getElementById('uploadLogoBtn');
+const removeLogoBtn = document.getElementById('removeLogoBtn');
+const previewLogo = document.getElementById('previewLogo');
+const noLogo = document.getElementById('noLogo');
+
+uploadLogoBtn.addEventListener('click', () => logoInput.click());
+
+logoInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      logoPreview.innerHTML = `<img src="${e.target.result}" alt="Logo">`;
+      previewLogo.src = e.target.result;
+      previewLogo.style.display = 'block';
+      noLogo.style.display = 'none';
+      removeLogoBtn.style.display = 'inline-flex';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Remove logo functionality
+removeLogoBtn.addEventListener('click', function() {
+  // Reset logo preview
+  logoPreview.innerHTML = '<i class="fas fa-plus"></i>';
+  
+  // Reset file input
+  logoInput.value = '';
+  
+  // Hide logo in preview
+  previewLogo.style.display = 'none';
+  noLogo.style.display = 'block';
+  
+  // Hide remove button
+  removeLogoBtn.style.display = 'none';
+});
       
       // Add item functionality
       const addItemBtn = document.getElementById('addItemBtn');
@@ -908,14 +940,12 @@ Email: john@client.com"></textarea>
         const docType = document.getElementById('docType').value;
         document.getElementById('previewDocType').textContent = docType.toUpperCase();
         
-        // Update addresses
-        const fromAddress = document.getElementById('fromAddress').value || 
-          "Your Company Name\n123 Business Street\nCity, State 12345\nEmail: contact@company.com\nPhone: (123) 456-7890";
-        document.getElementById('previewFromAddress').textContent = fromAddress;
-        
-        const toAddress = document.getElementById('toAddress').value || 
-          "Client Company Name\n456 Client Avenue\nCity, State 67890\nAttn: John Smith\nEmail: john@client.com";
-        document.getElementById('previewToAddress').textContent = toAddress;
+        // Update addresses - use empty string if no input
+const fromAddress = document.getElementById('fromAddress').value;
+document.getElementById('previewFromAddress').textContent = fromAddress || "";
+
+const toAddress = document.getElementById('toAddress').value;
+document.getElementById('previewToAddress').textContent = toAddress || "";
         
         // Update invoice number and date
         const invoiceNumber = document.getElementById('invoiceNumber').value;

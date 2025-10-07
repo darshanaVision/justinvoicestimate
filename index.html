@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Compact Invoice Generator</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --primary: #4361ee;
@@ -601,20 +603,53 @@ Email: john@client.com"></textarea>
             <label for="currency">Currency</label>
             <select id="currency">
               <option value="USD">USD ($)</option>
+              <option value="INR">INR (₹)</option>
+              <option value="LKR">LKR (Rs)</option>
               <option value="EUR">EUR (€)</option>
+              <option value="INR">INR (₹)</option>
               <option value="GBP">GBP (£)</option>
               <option value="JPY">JPY (¥)</option>
               <option value="CAD">CAD (C$)</option>
               <option value="AUD">AUD (A$)</option>
               <option value="CHF">CHF (CHF)</option>
               <option value="CNY">CNY (¥)</option>
-              <option value="INR">INR (₹)</option>
               <option value="BRL">BRL (R$)</option>
               <option value="MXN">MXN ($)</option>
               <option value="SGD">SGD (S$)</option>
               <option value="NZD">NZD (NZ$)</option>
               <option value="ZAR">ZAR (R)</option>
               <option value="AED">AED (د.إ)</option>
+              <option value="TRY">TRY (₺)</option>
+              <option value="RUB">RUB (₽)</option>
+              <option value="KRW">KRW (₩)</option>
+              <option value="SEK">SEK (kr)</option>
+              <option value="NOK">NOK (kr)</option>
+              <option value="DKK">DKK (kr)</option>
+              <option value="PLN">PLN (zł)</option>
+              <option value="THB">THB (฿)</option>
+              <option value="MYR">MYR (RM)</option>
+              <option value="IDR">IDR (Rp)</option>
+              <option value="PHP">PHP (₱)</option>
+              <option value="HKD">HKD (HK$)</option>
+              <option value="TWD">TWD (NT$)</option>
+              <option value="VND">VND (₫)</option>
+              <option value="SAR">SAR (﷼)</option>
+              <option value="QAR">QAR (﷼)</option>
+              <option value="KWD">KWD (د.ك)</option>
+              <option value="EGP">EGP (E£)</option>
+              <option value="ILS">ILS (₪)</option>
+              <option value="CLP">CLP (CLP$)</option>
+              <option value="COP">COP (COL$)</option>
+              <option value="PEN">PEN (S/.)</option>
+              <option value="ARS">ARS ($)</option>
+              <option value="UAH">UAH (₴)</option>
+              <option value="HUF">HUF (Ft)</option>
+              <option value="CZK">CZK (Kč)</option>
+              <option value="RON">RON (lei)</option>
+              <option value="BGN">BGN (лв)</option>
+              <option value="HRK">HRK (kn)</option>
+              <option value="ISK">ISK (kr)</option>
+              
             </select>
           </div>
           <div class="form-group">
@@ -941,11 +976,11 @@ removeLogoBtn.addEventListener('click', function() {
         document.getElementById('previewDocType').textContent = docType.toUpperCase();
         
         // Update addresses - use empty string if no input
-const fromAddress = document.getElementById('fromAddress').value;
-document.getElementById('previewFromAddress').textContent = fromAddress || "";
+      const fromAddress = document.getElementById('fromAddress').value;
+      document.getElementById('previewFromAddress').textContent = fromAddress || "";
 
-const toAddress = document.getElementById('toAddress').value;
-document.getElementById('previewToAddress').textContent = toAddress || "";
+      const toAddress = document.getElementById('toAddress').value;
+      document.getElementById('previewToAddress').textContent = toAddress || "";
         
         // Update invoice number and date
         const invoiceNumber = document.getElementById('invoiceNumber').value;
@@ -1016,16 +1051,30 @@ document.getElementById('previewToAddress').textContent = toAddress || "";
       }
       
       // Format currency
-      function formatCurrency(amount) {
-        const currency = document.getElementById('currency').value;
-        const symbols = {
-          'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CAD': 'C$',
-          'AUD': 'A$', 'CHF': 'CHF', 'CNY': '¥', 'INR': '₹', 'BRL': 'R$',
-          'MXN': '$', 'SGD': 'S$', 'NZD': 'NZ$', 'ZAR': 'R', 'AED': 'د.إ'
-        };
-        const symbol = symbols[currency] || '$';
-        return `${symbol}${amount.toFixed(2)}`;
-      }
+function formatCurrency(amount) {
+  const currency = document.getElementById('currency').value;
+  const symbols = {
+    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CAD': 'C$',
+    'AUD': 'A$', 'CHF': 'CHF', 'CNY': '¥', 'INR': '₹', 'BRL': 'R$',
+    'MXN': '$', 'SGD': 'S$', 'NZD': 'NZ$', 'ZAR': 'R', 'AED': 'د.إ',
+    'TRY': '₺', 'RUB': '₽', 'KRW': '₩', 'SEK': 'kr', 'NOK': 'kr',
+    'DKK': 'kr', 'PLN': 'zł', 'THB': '฿', 'MYR': 'RM', 'IDR': 'Rp',
+    'PHP': '₱', 'HKD': 'HK$', 'TWD': 'NT$', 'VND': '₫', 'SAR': '﷼',
+    'QAR': '﷼', 'KWD': 'د.ك', 'EGP': 'E£', 'ILS': '₪', 'CLP': 'CLP$',
+    'COP': 'COL$', 'PEN': 'S/.', 'ARS': '$', 'UAH': '₴', 'HUF': 'Ft',
+    'CZK': 'Kč', 'RON': 'lei', 'BGN': 'лв', 'HRK': 'kn', 'ISK': 'kr',
+    'LKR': 'Rs'
+  };
+  const symbol = symbols[currency] || '$';
+  
+  // Special formatting for some currencies
+  if (currency === 'JPY' || currency === 'KRW' || currency === 'VND' || currency === 'IDR') {
+    // These currencies typically don't use decimal places
+    return `${symbol}${amount.toFixed(0)}`;
+  }
+  
+  return `${symbol}${amount.toFixed(2)}`;
+}
       
       // Format date
       function formatDate(date) {
@@ -1047,10 +1096,96 @@ document.getElementById('previewToAddress').textContent = toAddress || "";
         }, 3000);
       });
       
-      // Download PDF
-      document.getElementById('downloadPdfBtn').addEventListener('click', function() {
-        alert('PDF download functionality would be implemented here with a library like jsPDF.');
-      });
+     // Download PDF
+document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+  generatePDF();
+});
+
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  
+  // Show loading state
+  const originalText = this.innerHTML;
+  this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+  this.disabled = true;
+  
+  // Capture the invoice preview
+  const invoiceElement = document.querySelector('.invoice-preview');
+  
+  html2canvas(invoiceElement, {
+    scale: 2, // Higher quality
+    useCORS: true,
+    logging: false,
+    backgroundColor: '#ffffff'
+  }).then(canvas => {
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const imgWidth = 210; // A4 width in mm
+    const pageHeight = 295; // A4 height in mm
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+    
+    // Add first page
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    
+    // Add additional pages if needed
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+    
+    // Get document details for filename
+    const docType = document.getElementById('docType').value;
+    const invoiceNumber = document.getElementById('invoiceNumber').value || 'document';
+    const filename = `${docType}_${invoiceNumber}.pdf`;
+    
+    // Download the PDF
+    pdf.save(filename);
+    
+    // Reset button state
+    this.innerHTML = originalText;
+    this.disabled = false;
+    
+    // Show success message
+    showStatusMessage('PDF downloaded successfully!', 'success');
+  }).catch(error => {
+    console.error('Error generating PDF:', error);
+    
+    // Reset button state
+    this.innerHTML = originalText;
+    this.disabled = false;
+    
+    // Show error message
+    showStatusMessage('Error generating PDF. Please try again.', 'error');
+  });
+}
+
+// Enhanced status message function
+function showStatusMessage(message, type = 'success') {
+  const statusMessage = document.getElementById('statusMessage');
+  const icon = statusMessage.querySelector('i');
+  
+  // Update message and style based on type
+  statusMessage.querySelector('span').textContent = message;
+  
+  if (type === 'error') {
+    statusMessage.style.background = 'var(--danger)';
+    icon.className = 'fas fa-exclamation-circle';
+  } else {
+    statusMessage.style.background = 'var(--success)';
+    icon.className = 'fas fa-check-circle';
+  }
+  
+  statusMessage.classList.add('show');
+  
+  setTimeout(() => {
+    statusMessage.classList.remove('show');
+  }, 3000);
+}
       
       // Set up event listeners for form changes
       document.getElementById('docType').addEventListener('change', updatePreview);

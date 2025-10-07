@@ -7,7 +7,33 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
+    /* Add to your existing CSS */
+@media print {
+  .invoice-preview {
+    width: 800px !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  .preview-actions,
+  .status-message {
+    display: none !important;
+  }
+}
+
+/* Ensure consistent styling for PDF capture */
+.invoice-preview {
+  background: white !important;
+  color: black !important;
+}
+
+.invoice-preview * {
+  box-sizing: border-box !important;
+}
     :root {
       --primary: #4361ee;
       --primary-dark: #3a56d4;
@@ -1096,7 +1122,7 @@ function formatCurrency(amount) {
         }, 3000);
       });
       
-     // Download PDF
+// Download PDF
 document.getElementById('downloadPdfBtn').addEventListener('click', function() {
   generatePDF();
 });
@@ -1105,63 +1131,87 @@ function generatePDF() {
   const { jsPDF } = window.jspdf;
   
   // Show loading state
-  const originalText = this.innerHTML;
-  this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
-  this.disabled = true;
+  const downloadBtn = document.getElementById('downloadPdfBtn');
+  const originalText = downloadBtn.innerHTML;
+  downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+  downloadBtn.disabled = true;
   
-  // Capture the invoice preview
-  const invoiceElement = document.querySelector('.invoice-preview');
+  // Force desktop preview styling for PDF capture
+  const previewContainer = document.querySelector('.invoice-preview');
+  const originalWidth = previewContainer.style.width;
   
-  html2canvas(invoiceElement, {
-    scale: 2, // Higher quality
-    useCORS: true,
-    logging: false,
-    backgroundColor: '#ffffff'
-  }).then(canvas => {
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 295; // A4 height in mm
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
-    
-    // Add first page
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-    
-    // Add additional pages if needed
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    
-    // Get document details for filename
-    const docType = document.getElementById('docType').value;
-    const invoiceNumber = document.getElementById('invoiceNumber').value || 'document';
-    const filename = `${docType}_${invoiceNumber}.pdf`;
-    
-    // Download the PDF
-    pdf.save(filename);
-    
-    // Reset button state
-    this.innerHTML = originalText;
-    this.disabled = false;
-    
-    // Show success message
-    showStatusMessage('PDF downloaded successfully!', 'success');
-  }).catch(error => {
-    console.error('Error generating PDF:', error);
-    
-    // Reset button state
-    this.innerHTML = originalText;
-    this.disabled = false;
-    
-    // Show error message
-    showStatusMessage('Error generating PDF. Please try again.', 'error');
-  });
+  // Set fixed width for consistent PDF output
+  previewContainer.style.width = '800px';
+  previewContainer.style.minHeight = 'auto';
+  
+  // Add a small delay to ensure styles are applied
+  setTimeout(() => {
+    // Capture the invoice preview with high quality
+    html2canvas(previewContainer, {
+      scale: 3, // Very high quality for sharp text
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      width: previewContainer.scrollWidth,
+      height: previewContainer.scrollHeight,
+      windowWidth: previewContainer.scrollWidth,
+      windowHeight: previewContainer.scrollHeight,
+      onclone: function(clonedDoc) {
+        // Ensure all styles are preserved in the clone
+        const clonedPreview = clonedDoc.querySelector('.invoice-preview');
+        clonedPreview.style.width = '800px';
+        clonedPreview.style.transform = 'scale(1)';
+      }
+    }).then(canvas => {
+      // Restore original styles
+      previewContainer.style.width = originalWidth;
+      previewContainer.style.minHeight = '';
+      
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calculate dimensions to fit the page
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight) * 0.95;
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+      
+      // Add image to PDF
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      // Get document details for filename
+      const docType = document.getElementById('docType').value;
+      const invoiceNumber = document.getElementById('invoiceNumber').value || 'document';
+      const filename = `${docType}_${invoiceNumber}.pdf`.replace(/\s+/g, '_');
+      
+      // Download the PDF
+      pdf.save(filename);
+      
+      // Reset button state
+      downloadBtn.innerHTML = originalText;
+      downloadBtn.disabled = false;
+      
+      // Show success message
+      showStatusMessage('PDF downloaded successfully!', 'success');
+      
+    }).catch(error => {
+      console.error('Error generating PDF:', error);
+      
+      // Restore original styles on error
+      previewContainer.style.width = originalWidth;
+      previewContainer.style.minHeight = '';
+      
+      // Reset button state
+      downloadBtn.innerHTML = originalText;
+      downloadBtn.disabled = false;
+      
+      // Show error message
+      showStatusMessage('Error generating PDF. Please try again.', 'error');
+    });
+  }, 100);
 }
 
 // Enhanced status message function
@@ -1184,7 +1234,7 @@ function showStatusMessage(message, type = 'success') {
   
   setTimeout(() => {
     statusMessage.classList.remove('show');
-  }, 3000);
+  }, 4000);
 }
       
       // Set up event listeners for form changes

@@ -1122,7 +1122,7 @@ function formatCurrency(amount) {
         }, 3000);
       });
       
-// Download PDF
+// Download PDF - Text-based for small file size
 document.getElementById('downloadPdfBtn').addEventListener('click', function() {
   generatePDF();
 });
@@ -1130,88 +1130,159 @@ document.getElementById('downloadPdfBtn').addEventListener('click', function() {
 function generatePDF() {
   const { jsPDF } = window.jspdf;
   
-  // Show loading state
   const downloadBtn = document.getElementById('downloadPdfBtn');
   const originalText = downloadBtn.innerHTML;
   downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
   downloadBtn.disabled = true;
   
-  // Force desktop preview styling for PDF capture
-  const previewContainer = document.querySelector('.invoice-preview');
-  const originalWidth = previewContainer.style.width;
-  
-  // Set fixed width for consistent PDF output
-  previewContainer.style.width = '800px';
-  previewContainer.style.minHeight = 'auto';
-  
-  // Add a small delay to ensure styles are applied
-  setTimeout(() => {
-    // Capture the invoice preview with high quality
-    html2canvas(previewContainer, {
-      scale: 3, // Very high quality for sharp text
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      width: previewContainer.scrollWidth,
-      height: previewContainer.scrollHeight,
-      windowWidth: previewContainer.scrollWidth,
-      windowHeight: previewContainer.scrollHeight,
-      onclone: function(clonedDoc) {
-        // Ensure all styles are preserved in the clone
-        const clonedPreview = clonedDoc.querySelector('.invoice-preview');
-        clonedPreview.style.width = '800px';
-        clonedPreview.style.transform = 'scale(1)';
+  try {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const margin = 15;
+    let yPos = margin;
+    const lineHeight = 5;
+    
+    // Get all data
+    const docType = document.getElementById('docType').value.toUpperCase();
+    const invoiceNumber = document.getElementById('invoiceNumber').value || 'UNKNOWN';
+    const invoiceDate = document.getElementById('previewDate').textContent;
+    const fromAddress = document.getElementById('previewFromAddress').textContent;
+    const toAddress = document.getElementById('previewToAddress').textContent;
+    const subtotal = document.getElementById('previewSubtotal').textContent;
+    const discount = document.getElementById('previewDiscount').textContent;
+    const tax = document.getElementById('previewTax').textContent;
+    const total = document.getElementById('previewTotal').textContent;
+    const taxRate = document.getElementById('previewTaxPercent').textContent;
+    
+    // Header
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(18);
+    pdf.text(docType, margin, yPos);
+    
+    // Document info (right aligned)
+    pdf.setFontSize(10);
+    pdf.text(`Number: ${invoiceNumber}`, 180, yPos, { align: 'right' });
+    yPos += lineHeight;
+    pdf.text(`Date: ${invoiceDate}`, 180, yPos, { align: 'right' });
+    
+    yPos += 10;
+    
+    // Addresses
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('FROM:', margin, yPos);
+    pdf.text('TO:', 110, yPos);
+    
+    pdf.setFont('helvetica', 'normal');
+    yPos += lineHeight;
+    
+    const fromLines = pdf.splitTextToSize(fromAddress, 80);
+    const toLines = pdf.splitTextToSize(toAddress, 80);
+    
+    pdf.text(fromLines, margin, yPos);
+    pdf.text(toLines, 110, yPos);
+    
+    yPos += Math.max(fromLines.length, toLines.length) * lineHeight + 10;
+    
+    // Table Header
+    pdf.setFillColor(67, 97, 238);
+    pdf.setTextColor(255, 255, 255);
+    pdf.rect(margin, yPos, 180, 7, 'F');
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Description', margin + 2, yPos + 5);
+    pdf.text('Qty', 130, yPos + 5);
+    pdf.text('Price', 150, yPos + 5);
+    pdf.text('Amount', 180, yPos + 5, { align: 'right' });
+    
+    yPos += 8;
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'normal');
+    
+    // Table Rows
+    const items = document.querySelectorAll('#previewItems tr');
+    let hasItems = false;
+    
+    items.forEach((item, index) => {
+      const cells = item.querySelectorAll('td');
+      if (cells.length === 4) {
+        hasItems = true;
+        
+        const desc = cells[0].textContent || 'Item description';
+        const qty = cells[1].textContent || '0';
+        const price = cells[2].textContent || '$0.00';
+        const amount = cells[3].textContent || '$0.00';
+        
+        // Alternate row background
+        if (index % 2 === 0) {
+          pdf.setFillColor(245, 245, 245);
+          pdf.rect(margin, yPos, 180, 8, 'F');
+        }
+        
+        const descLines = pdf.splitTextToSize(desc, 80);
+        const descHeight = Math.max(descLines.length * lineHeight, 8);
+        
+        pdf.text(descLines, margin + 2, yPos + 5);
+        pdf.text(qty, 130, yPos + 5);
+        pdf.text(price, 150, yPos + 5);
+        pdf.text(amount, 180, yPos + 5, { align: 'right' });
+        
+        yPos += descHeight;
+        
+        // Page break if needed
+        if (yPos > 250) {
+          pdf.addPage();
+          yPos = margin;
+        }
       }
-    }).then(canvas => {
-      // Restore original styles
-      previewContainer.style.width = originalWidth;
-      previewContainer.style.minHeight = '';
-      
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // Calculate dimensions to fit the page
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight) * 0.95;
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 10;
-      
-      // Add image to PDF
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
-      
-      // Get document details for filename
-      const docType = document.getElementById('docType').value;
-      const invoiceNumber = document.getElementById('invoiceNumber').value || 'document';
-      const filename = `${docType}_${invoiceNumber}.pdf`.replace(/\s+/g, '_');
-      
-      // Download the PDF
-      pdf.save(filename);
-      
-      // Reset button state
-      downloadBtn.innerHTML = originalText;
-      downloadBtn.disabled = false;
-      
-      // Show success message
-      showStatusMessage('PDF downloaded successfully!', 'success');
-      
-    }).catch(error => {
-      console.error('Error generating PDF:', error);
-      
-      // Restore original styles on error
-      previewContainer.style.width = originalWidth;
-      previewContainer.style.minHeight = '';
-      
-      // Reset button state
-      downloadBtn.innerHTML = originalText;
-      downloadBtn.disabled = false;
-      
-      // Show error message
-      showStatusMessage('Error generating PDF. Please try again.', 'error');
     });
-  }, 100);
+    
+    if (!hasItems) {
+      pdf.text('No items added', margin + 2, yPos + 5);
+      yPos += lineHeight;
+    }
+    
+    yPos += 10;
+    
+    // Totals
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Subtotal:', 130, yPos);
+    pdf.text(subtotal, 180, yPos, { align: 'right' });
+    
+    yPos += lineHeight;
+    pdf.text('Discount:', 130, yPos);
+    pdf.text(discount, 180, yPos, { align: 'right' });
+    
+    yPos += lineHeight;
+    pdf.text(`Tax (${taxRate}%):`, 130, yPos);
+    pdf.text(tax, 180, yPos, { align: 'right' });
+    
+    yPos += lineHeight + 2;
+    pdf.setFontSize(12);
+    pdf.text('TOTAL:', 130, yPos);
+    pdf.text(total, 180, yPos, { align: 'right' });
+    
+    // Footer
+    yPos += 15;
+    pdf.setFont('helvetica', 'italic');
+    pdf.setFontSize(9);
+    pdf.setTextColor(128, 128, 128);
+    pdf.text('Thank you for your business!', 105, yPos, { align: 'center' });
+    
+    // Download
+    const filename = `${docType.toLowerCase()}_${invoiceNumber}.pdf`.replace(/\s+/g, '_');
+    pdf.save(filename);
+    
+    // Reset button
+    downloadBtn.innerHTML = originalText;
+    downloadBtn.disabled = false;
+    
+    showStatusMessage('PDF downloaded successfully! (Small file size)', 'success');
+    
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    downloadBtn.innerHTML = originalText;
+    downloadBtn.disabled = false;
+    showStatusMessage('Error generating PDF. Please try again.', 'error');
+  }
 }
 
 // Enhanced status message function
